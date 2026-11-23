@@ -1,0 +1,452 @@
+---
+title: "Τελική εξέταση - Γκολογκίνας Γιώργος"
+
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    theme: united
+    highlight: textmate
+    css: styles.css
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+      hide_on_mobile: true
+  pdf_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    latex_engine: xelatex
+    keep_tex: true
+    fig_crop: true
+  word_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true 
+    reference_docx: template.docx
+date: "26-02-2024"
+output_options: 
+  html_document:
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+      hide_on_mobile: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 10, fig.height = 5, warning = FALSE)
+
+library(sf)
+library(leaflet)
+library(ggplot2)
+library(plotly)
+library(shinydashboard)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(corrplot)
+
+data <- read.csv("C:/Users/30694/Desktop/Διερευνητική Ανάλυση και Οπτικοποίηση Δεδομένων/FINAL/county_demographics.csv")
+
+library(knitr)
+
+
+# Generate descriptive statistics table
+summary_table <- summary(data)
+
+# Replace -1 with NA
+data[data == -1] <- NA
+
+# Count NA values in each column
+na_count <- colSums(is.na(data))
+
+# Create a data frame with column names and NA counts
+na_df <- data.frame(Column = names(na_count), NA_Count = na_count)
+
+library(mice)
+
+# Identify numeric columns
+numeric_columns <- sapply(data, is.numeric)
+
+# Impute missing values using mice
+imputed_data <- mice(data[, numeric_columns], method = "mean", m = 5)
+
+# Complete the imputation process
+imputed_data_complete <- complete(imputed_data)
+
+student_info <- data.frame(
+  "Φοιτητής" = "Γεώργιος Δημήτριος Γκολογκίνας",
+  "Υπεύθυνος_καθηγητής" = "κ. Γεώργιος Ευαγγελίδης",
+  "ΑΕΜ" = "aid24004",
+  "email" = "aid24004@uom.edu.gr"
+)
+```
+<br>
+<br>
+
+
+
+```{r, echo = FALSE}
+
+
+kable(student_info, format = "html", table.attr = 'class="table table-striped table-hover"')
+
+
+
+```
+
+
+
+
+<br>
+<br>
+<br>
+
+
+# 1. Στατιστικά πίνακα.
+
+<br>
+
+
+<br>
+```{r}
+
+
+# Print the table using knitr::kable()
+knitr::kable(summary_table, caption = "Descriptive Statistics for Each Column")
+
+```
+<br>
+
+
+
+
+
+<br>
+<br>
+<br>
+
+
+# Μη διαθέσιμες τιμές - Εξερεύνηση και οπτικοποίηση.
+
+<br>
+
+
+<br>
+```{r, echo = FALSE}
+
+
+# Print the table
+kable(na_df, caption = "Number of NA Values in Each Column")
+
+```
+<br>
+
+<br>
+<br>
+
+ **Πρώτο διαγραμμα ΝΑ τιμών** 
+```{r, echo = FALSE}
+
+# Load necessary library
+library(naniar)
+
+# Create missingness matrix plot
+gg_miss_var(data)
+
+
+```
+
+<br>
+<br>
+<br>
+
+ **Δεύτερο διαγραμμα ΝΑ τιμών** 
+```{r, echo = FALSE}
+
+# Load necessary library
+library(visdat)
+library(ggplot2)
+
+# Visualize missing data patterns with vertical labels
+vis_dat(data) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+```
+
+## Σχολιασμός NA τιμών.
+
+Παραπάνω δημιουργήθηκε ενας πίνακας και 2 διαγράμματα ώστε να γίνει κατανοητή η κταανομή των ΝΑ τιμών στο σετ δεδομένων. Τις περισσότερες τιμές φαίνεται πως έχει η στήλη "Miscellaneous.Manufacturers.Shipments" ενώ δεύτερη εμφανίζεται η "Sales.Accommodation.and.Food.Services.Sales". 
+
+
+<br>
+
+
+
+
+
+
+<br>
+<br>
+<br>
+
+
+# 3. Διαχείριση - συμπλήρωση ΝΑ τιμων  
+
+<br>
+
+
+<br>
+```{r}
+
+library(mice)
+
+# Identify numeric columns
+numeric_columns <- sapply(data, is.numeric)
+
+# Impute missing values using mice
+imputed_data <- mice(data[, numeric_columns], method = "mean", m = 5)
+
+# Complete the imputation process
+imputed_data_complete <- complete(imputed_data)
+
+
+
+
+
+```
+<br>
+
+## Σχολιασμός συμπληρωσης ΝΑ τιμών.  
+
+Οπως φαίνεται στο dictionary του csv οι στήλες που περιέχουν τις περισσότερες ΝΑ τιμές αποτελούνται απο ακέραιους και δεκαδικούς αριθμούς. Προτιμήθηκε το πακέτο mean και η μέθοδος mean η οποία θα αξιολογηθεί μέσω διαγραμμάτων παρακάτω. 
+
+
+
+<br>
+<br>
+<br>
+
+
+# 4. Οπτικοποίηση δεδομενων 
+
+<br>
+
+
+<br>
+```{r, echo=FALSE, fig.width=20,fig.height=13}
+# Set up a plotting area with one plot per row
+par(mfrow=c(1, 2), mar=c(4, 4, 2, 2))
+
+# Get numeric column names
+numeric_cols <- names(data)[sapply(data, is.numeric)]
+
+# Loop through each numeric variable
+for (col in numeric_cols) {
+  # Original data
+  hist(data[[col]], main = paste("Original -", col), xlab = col, col = "skyblue")
+  
+  # Imputed data
+  hist(imputed_data_complete[[col]], main = paste("Imputed -", col), xlab = col, col = "lightgreen")
+}
+
+
+
+```
+<br>
+
+## Κανομές κανονικών και συμπλυρωμένων τιμών. 
+
+
+Οπως φαινεται παραπάνω, για κάθε στήλη που συμπληρώθηκε δημιουργήθηκαν διαγράμματα κατανομής ώστε να συγκριθούν οι τιμές πριν και μετα. ΟπΩς φαιενται σε κάθε στήλη, οι διαφορές ειναι εξαιρετικά χαμηλές κατα τη συγκριση, κατι που σημαίνει οτι η μέθοδος αυτή δούλεψε.
+
+
+
+
+
+<br>
+<br>
+<br>
+
+
+# 5.Outliers
+
+<br>
+
+
+<br>
+```{r, echo=FALSE, fig.width=20,fig.height=13}
+# Set up a plotting area with one plot per row
+par(mfrow=c(1, 2), mar=c(4, 4, 2, 2))
+
+# Loop through each numeric variable
+for (col in numeric_cols) {
+  # Boxplot of imputed data
+  boxplot(imputed_data_complete[[col]], main = paste("Imputed -", col), col = "lightgreen", horizontal = TRUE)
+}
+
+
+
+```
+<br>
+
+## Σχολιασμός Outliers
+
+Οπως φαίνετια και παραπάνω η διαδικασία της εκτίμησης των τιμών αυτών χρειάζεται χρόνο. Δημιουργήθηκε ενα boxplot για κάθε στήλη.
+Παρατηρήθηκε πως όλες σχεδόν οι στήλες που σχετίζονται με το "ethnistics" παρουσιάζουν outliers ενω αντίθετα παρατηρείται καλή κατανομή των τιμων στη στήλη Miscallaneous_Mean_Travel_time. 
+
+
+<br>
+<br>
+<br>
+
+
+# Univariate Analysis
+<br>
+
+
+<br>
+```{r, echo=FALSE, fig.width=20,fig.height=13}
+library(ggplot2)
+library(corrplot)
+
+
+# Univariate Plot
+ggplot(imputed_data_complete, aes(x = Age.Percent.Under.18.Years)) + 
+  geom_histogram(binwidth = 1, fill = "blue", color = "black")
+
+
+# Univariate Boxplot for Median Household Income
+ggplot(imputed_data_complete, aes(y = Income.Median.Houseold.Income)) + 
+  geom_boxplot(fill = "blue") +
+  labs(title = "Boxplot of Median Household Income",
+       x = "",
+       y = "Median Household Income")
+
+
+
+# Univariate Density Plot
+ggplot(imputed_data_complete, aes(x = Age.Percent.65.and.Older)) + 
+  geom_density(fill = "yellow", alpha = 0.5) +
+  labs(title = "Density Plot of Age Percent 65 and Older",
+       x = "Age Percent 65 and Older",
+       y = "Density")
+
+
+# Univariate Plot
+ggplot(imputed_data_complete, aes(x = Education.Bachelor.s.Degree.or.Higher)) + 
+  geom_histogram(binwidth = 1, fill = "blue", color = "black")
+
+
+
+# Univariate Plot
+ggplot(imputed_data_complete, aes(x = Ethnicities.White.Alone)) + 
+  geom_histogram(binwidth = 1, fill = "red", color = "black")
+
+
+```
+<br>
+## Σχολιασμός Univariate
+
+Εδω φαινονται οι κατναομες για καθε μεταβλητη μεμονομένη. 
+
+<br>
+<br>
+<br>
+
+
+# Multivariate Analysis
+<br>
+
+
+<br>
+```{r, echo=FALSE, fig.width=20,fig.height=13}
+library(ggplot2)
+library(corrplot)
+
+
+
+
+ggplot(imputed_data_complete, aes(x = Education.Bachelor.s.Degree.or.Higher, y = Income.Median.Houseold.Income)) +
+  geom_point() +
+  labs(title = "Scatter Plot of Education.Bachelor.s.Degree.or.Higher vs. Income.Median.Houseold.Income",
+       x = "Education.Bachelor.s.Degree.or.Higher",
+       y = "Income.Median.Houseold.Income")
+
+
+# Pairs Plot (for multiple pairwise relationships)
+pairs(~ Education.Bachelor.s.Degree.or.Higher + Income.Median.Houseold.Income + Ethnicities.White.Alone, data = imputed_data_complete)
+
+
+
+
+
+```
+
+
+
+<br>
+## Σχολιασμός Multivariate και συσχετίσεις 
+Οπως φαινεται παραπανω διαλέχτηκαν 3 μεταβλητες προς διερευνηση. 
+
+
+Καταλαβαινουμε πως το εισοδημα εχει σχεση με το επιπεδο εκπαιδευσης. Αντιθετα, η εθνικότητα με το εισοδημα παρουσιαζει μια μεγαλη διασπορα στα δεδομένα. 
+
+Εδω φαινονται οι κατναομες για καθε μεταβλητη μεμονομένη.<br>
+<br>
+
+
+# PCA 
+<br>
+
+
+<br>
+```{r, echo=FALSE, fig.width=20,fig.height=13}
+# Standardize the data
+my_data_std <- scale(imputed_data_complete)
+pca_result <- prcomp(my_data_std, scale. = TRUE)
+summary(pca_result)
+# Scree plot
+
+
+# Scree plot
+plot(1:length(pca_result$sdev), pca_result$sdev^2, type = "b", 
+     xlab = "Principal Component", ylab = "Variance", 
+     main = "Scree Plot")
+abline(h = 1, col = "red", lty = 2)  # Highlight the eigenvalue cutoff criterion
+
+
+
+
+
+```
+
+<br>
+
+
+<br>
+```{r, echo=FALSE, fig.width=20,fig.height=13}
+
+
+# Biplot
+biplot(pca_result, scale = 0)
+
+```
+
+## Σχολιασμός PCA.
+
+
+Στόχος του pca ειναι η μειωση τω διαστασεων και η ευρεση αυτων των μεταβλητων που ξεχωρίζουν καθ δεν συχετίζουν μεταξυ τους. 
+
+Δυστυχως λόγω χρόνου δεν μπόρεσα να σχολιάσω παραπάνω αν και ειχα παραπολλα πραματα να πω. 
+<br>
+<br>
+
+                                                 Θεσσαλονίκη 26-02-2024
+                                                                                                  
+                                             Γεώργιος Δημήτριος Γκολογκίνας
+                                             
+                                        Υπεύθυνος καθηγητής : κ.Γεώργιος Ευαγγελίδης
+
