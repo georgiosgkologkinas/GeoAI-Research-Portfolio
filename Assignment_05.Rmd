@@ -1,0 +1,170 @@
+---
+title: "Υψόμετρο πόλεων, Μέσο υψόμετρο νομών και τυπική απόκλιση Νομών.
+  Source: EDAV ΠΑΜΑΚ"
+output: flexdashboard::flex_dashboard
+runtime: shiny
+---
+
+
+```{r setup, include=FALSE}
+library(rnaturalearth)
+library(wbstats)
+library(leaflet)
+library(DT)
+library(ggplot2)
+library(sf)
+library(sf)
+library(tmap)
+library(raster)
+library(leaflet)
+library(ggplot2)
+library(rgdal)
+
+points_shapefile <- st_read("C:/Users/30694/Desktop/Διερευνητική Ανάλυση και Οπτικοποίηση Δεδομένων/ergasia_4h/data μέρος β/poleis_wgs_ypsom.shp")
+
+
+
+nomoi <- st_read("C:/Users/30694/Desktop/Διερευνητική Ανάλυση και Οπτικοποίηση Δεδομένων/ergasia_4h/data μέρος β/GRC_ADM2.shp")
+poleis <- st_read("C:/Users/30694/Desktop/Διερευνητική Ανάλυση και Οπτικοποίηση Δεδομένων/ergasia_4h/data μέρος β/Poleis_WGS84.shp")
+
+# Read the raster file
+rasterfile <- "C:/Users/30694/Desktop/Διερευνητική Ανάλυση και Οπτικοποίηση Δεδομένων/ergasia_4h/data μέρος β/30n000e_20101117_gmted_mea300.tif"
+raster_data <- raster(rasterfile)
+
+
+# Extract pixel values at 'poleis' points
+values_poleis <- extract(raster_data, poleis)
+
+# Add the extracted values to the 'poleis' data frame
+poleis$clipped_raster_values <- values_poleis
+
+
+
+# Extract altitude values for each 'nomoi'
+altitude_values_mean <- extract(raster_data, nomoi, fun = mean, na.rm = TRUE)
+altitude_values_sd <- extract(raster_data, nomoi, fun = sd, na.rm = TRUE)
+
+
+# Calculate average altitude and standard deviation for each 'nomoi'
+nomoi$Av_gAltitude <- altitude_values_mean
+nomoi$SD_Altitude <- altitude_values_sd
+
+palMean <- colorBin(palette = "viridis", domain = nomoi$Av_gAltitude, bins = 10)
+palSd <- colorBin(palette = "viridis", domain = nomoi$SD_Altitude, bins = 10)
+# Add more palette functions if needed
+
+```
+
+
+Column {.sidebar data-width=200}
+-------------------------------------
+
+```{r}
+minAvgAltitude <- floor(min(nomoi$Av_gAltitude, na.rm = TRUE))
+maxAvgAltitude <- ceiling(max(nomoi$Av_gAltitude, na.rm = TRUE))
+minSdAltitude <- floor(min(nomoi$SD_Altitude, na.rm = TRUE))
+maxSdAltitude <- ceiling(max(nomoi$SD_Altitude, na.rm = TRUE))
+
+sliderInput("rangeAvgAltitude",
+  label = "Average Altitude:",
+  min = minAvgAltitude, max = maxAvgAltitude,
+  value = c(minAvgAltitude, maxAvgAltitude)
+)
+
+sliderInput("rangeSdAltitude",
+  label = "SD of Altitude:",
+  min = minSdAltitude, max = maxSdAltitude,
+  value = c(minSdAltitude, maxSdAltitude)
+)
+
+minValue <- floor(min(points_shapefile$ypsometro1, na.rm = TRUE))
+maxValue <- ceiling(max(points_shapefile$ypsometro1, na.rm = TRUE))
+
+sliderInput("rangeValue",
+  label = "Value:",
+  min = minValue, max = maxValue,
+  value = c(minValue, maxValue)
+)
+
+
+
+       
+```
+
+
+  
+  
+Column {data-width=800}
+-------------------------------------
+
+### Map
+
+
+```{r}
+nomoiFiltered <- reactive({
+  filterAvgAltitude <- nomoi$Av_gAltitude >= input$rangeAvgAltitude[1] & nomoi$Av_gAltitude <= input$rangeAvgAltitude[2]
+  filterSdAltitude <- nomoi$SD_Altitude >= input$rangeSdAltitude[1] & nomoi$SD_Altitude <= input$rangeSdAltitude[2]
+  nomoi[filterAvgAltitude & filterSdAltitude, ]
+})
+
+pointsFiltered <- reactive({
+  filterValue <- points_shapefile$ypsometro1 >= input$rangeValue[1] & points_shapefile$ypsometro1 <= input$rangeValue[2]
+  points_shapefile[filterValue, ]
+})
+
+
+
+
+renderLeaflet({
+  filteredNomoi <- nomoiFiltered()
+  filteredPoints <- pointsFiltered()
+
+  map <- leaflet() %>%
+    addTiles() %>%
+    setView(lng = 27.23, lat = 36.56, zoom = 6)
+
+  # Adding Nomoi Polygons
+  if (nrow(filteredNomoi) > 0) {
+    map <- map %>%
+      addPolygons(
+        data = filteredNomoi,
+        fillColor = ~ colorBin(palette = "viridis", domain = filteredNomoi$Av_gAltitude, bins = 10)(Av_gAltitude),
+        color = "white",
+        fillOpacity = 0.7,
+        label = ~paste0("Name:", NAME, "--", "Average Altitude:", Av_gAltitude, "--", " SD Altitude:", SD_Altitude),
+        highlight = highlightOptions(color = "black", bringToFront = TRUE),
+        group = "Nomoi"
+      )
+  }
+
+  # Adding Points Shapefile
+  if (nrow(filteredPoints) > 0) {
+    map <- map %>%
+      addCircleMarkers(
+        data = filteredPoints,
+        radius = 5,  # Fixed radius for visibility
+        label = ~ paste0("Υψόμετρο: ", ypsometro1),
+        color = "blue",
+        fillOpacity = 0.8,
+        group = "Points"
+      )
+  }
+
+  # Add Layers Control
+  map <- map %>%
+    addLayersControl(
+      overlayGroups = c("Nomoi", "Points"),
+      options = layersControlOptions(collapsed = FALSE)
+    )
+
+  map
+})
+
+
+
+
+
+
+```
+   
+
