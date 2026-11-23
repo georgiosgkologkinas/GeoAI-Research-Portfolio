@@ -1,0 +1,386 @@
+---
+title: "A μέρος - Εργασία γράφων"
+
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    theme: united
+    highlight: textmate
+    css: styles.css
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+      hide_on_mobile: true
+  pdf_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    latex_engine: xelatex
+    keep_tex: true
+    fig_crop: true
+  word_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true 
+    reference_docx: template.docx
+date: "09-12-2023"
+output_options: 
+  html_document:
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+      hide_on_mobile: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 8, fig.height = 5, warning = FALSE)
+library(raster)
+library(ggraph)
+library(tidygraph)
+library(igraph)
+library(ggraph)
+
+
+
+
+library(stringr)
+library(tidyverse)
+library(plotly)
+library(visNetwork)
+data <- read.csv("C:/Users/30694/Desktop/Διερευνητική Ανάλυση και Οπτικοποίηση Δεδομένων/ergasia_4h/data μέρος α/europe.csv", header = TRUE) 
+
+data2 <- read.csv("C:/Users/30694/Desktop/Διερευνητική Ανάλυση και Οπτικοποίηση Δεδομένων/ergasia_4h/data μέρος α/europe_2.csv", header = TRUE)
+
+graph_routes <- as_tbl_graph(data)
+
+library(knitr)
+
+student_info <- data.frame(
+  "Φοιτητής" = "Γεώργιος Δημήτριος Γκολογκίνας",
+  "Υπεύθυνος_καθηγητής" = "κ. Γεώργιος Ευαγγελίδης",
+  "ΑΕΜ" = "aid24004",
+  "email" = "aid24004@uom.edu.gr"
+)
+
+
+```
+<br>
+<br>
+
+
+```{r, echo = FALSE}
+
+
+kable(student_info, format = "html", table.attr = 'class="table table-striped table-hover"')
+
+
+
+```
+
+<br>
+
+
+Στην παρούσα εργασία ο φοιτητής καλέιται να δώσει απαντήσεις σε μια σειρά ερωτημάτων που αφορούν γράφους - δίκτυα.
+
+
+<br>
+
+# Ερώτημα 1
+
+Στο πρώτο ερώτημα  δημιουργήθηκε ένα μη-κατευθυνόμενο δίκτυο όπου οι κόμβοι είναι οι χώρες και οι ακμές
+είναι οι διαδρομές αυτές που συνδέουν τις συνορεύουσες χώρες ορίζοντας ως βάρος την απόσταση.
+
+<br>
+
+```{r}
+
+
+
+# Δημιουργία ενός μη-κατευθυνόμενου γράφου με τη βιβλιοθήκη tidygraph
+graph <- data %>%
+  as_tbl_graph(directed = FALSE) %>%
+  mutate_all(as.character) # Μετατροπή των στηλών σε χαρακτήρες
+
+# Εμφάνιση του γράφου
+graph %>%
+  ggraph(layout = "fr") +
+  geom_edge_link(aes(label = distance), show.legend = FALSE) + 
+  geom_node_point(color = "skyblue", size = 5) + # Κόμβοι
+  geom_node_text(aes(label = name), repel = TRUE, hjust = 1, size = 3) + 
+  theme_void() +
+  ggtitle("Μη-κατευθυνόμενο δίκτυο Ευρωπαϊκών Χωρών με αποστάσεις Πρωτευουσών")
+
+
+
+```
+
+<br>
+
+## Σχολιασμός πρώτου ερωτήματος
+
+Στο παραπάνω διάγραμμα φαίνεται το δίκτυο με τις αποστάσεις μεταξύ των κόμβων. Κάθε κόμβος αντιστοιχεί σε μία χώρα και κάθε διάνυσμα στην απόσταση. Τα δεδομένα δημιουργήθηκαν τυχαία απο τον διδάσκοντα, επομένως μπορεί να υπάρχουν τιμές που δεν αντιστοιχούν σε πραγματικά δεδομένα.
+
+Για τη δημιουργία του δικτύου χρησιμοποιήθηκε η βιβλιοθήκη ggraph,όπου ορίστηκε και το directed = FALSE ώστε να μην είναι κατευθυνόμενο.
+
+
+<br>
+<br>
+<br>
+<br>
+
+# Ερώτημα 2
+<br>
+Για το δεύτερο ερώτημα χρειάστηκε να δημιουργηθεί ένα γράφημα του δικτύου, στο οποίο να αναγράφονται οι ετικέτες των κόμβων (ονομασίες) και να διαφοροποιείται το πάχος ανάλογα με την τιμή του διανύσματος (απόσταση) που ενώνει τους κόμβους.
+
+<br>
+
+```{r}
+
+
+
+
+# Μετατροπή της στήλης distance σε αριθμητική μεταβλητή
+data$distance <- as.numeric(data$distance)
+
+# Δημιουργία ενός μη-κατευθυνόμενου γράφου με τη βιβλιοθήκη tidygraph
+graph <- data %>%
+  as_tbl_graph(directed = FALSE) %>%
+  mutate_all(as.character) # Μετατροπή των στηλών σε χαρακτήρες
+
+# Εμφάνιση του γράφου με διάφορα layouts και προσαρμογή του στιλ
+graph %>%
+  ggraph(layout = "nicely") + # Μπορείτε να δοκιμάσετε διάφορα layouts εδώ
+  geom_edge_link(aes(width = distance), alpha = 0.7,color = "orange") + # Πάχος ακμών με βάση την απόσταση
+  geom_node_point(color = "skyblue", size = 7) + # Κόμβοι
+  geom_node_text(aes(label = name), repel = TRUE, size = 3) + # Ετικέτες
+  theme_void() +
+  scale_edge_width_continuous(range = c(0.5, 5)) + # Περιορισμός του εύρους πάχους των ακμών
+  ggtitle("Μη-κατευθυνόμενος Γράφος Ευρωπαϊκών Χωρών με Αποστάσεις Πρωτευουσών")
+
+
+```
+<br>
+
+
+## Σχολιασμός δεύτερου ερωτήματος
+
+Με την παραπάνω αναπαράσταση του δικτύου, γίνονται εύκολα αντιληπτές οι διαφορές των τιμών των αποστάσεων. Παρατηρείται πως μεγάλες αποστάσεις έχουν οι διαδρομές μεταξύ Νορβηγίας - Ισλανδίας, Ρωσίας - Ουκρανίας και Πολωνίας - Ρουμανίας.
+
+Η εντολή geom_edge_link(aes(width = distance), alpha = 0.7,color = "orange"), όρισε το πάχος της γραμμής που συνδέει κάθε χώρα ανάλογα με την τιμή της μεταβλητης που ορίστηκε (distance). Τέλος, δόθηκε πορτοκαλί χρώμα στα διανύσματα ώστε να ξεχωρίζουν απο  τους κόμβους.
+
+
+<br>
+<br>
+<br>
+<br>
+
+
+
+# Ερώτημα 3
+Για το τρίτο ερώτημα χρειάστηκε να υπολογιστεί το βέλτιστο μονοπάτι μεταξύ Ελλάδας και Φινλανδίας με δύο διαφορετικές παραμέτρους. Για την πρώτη περίπτωση ως κόστος λαμβάνεται η απόσταση ανάμεσα στις χώρες (πρακτικά η απόσταση των πρωτευουσών τους), ενώ για τη δεύτερη ως κόστος λαμβάνεται το πλήθος των χωρών που διασχίζει κανείς.
+
+
+# Ερώτημα 3.α
+<br>
+
+Πρώτη περίπτωση (βάρος απόστασης):
+<br>
+
+```{r, fig.width = 12, fig.height = 12}
+
+# Create a graph object from the data
+graph <- graph_from_data_frame(data, directed = FALSE)
+
+# Find the shortest path between Greece and Finland considering weights
+shortest_path <- shortest_paths(graph, from = "Greece", to = "Finland", weights = data$distance, output = "both")
+
+# Extract edge IDs of the shortest path
+edge_ids_shortest_path <- as.numeric(unlist(shortest_path$epath))
+
+# Set colors for the entire graph
+E(graph)$color <- "lightblue"  # Default color
+
+# Set a different color for edges in the shortest path
+E(graph)$color[edge_ids_shortest_path] <- "red"  # Color for shortest path edges
+
+# Set smaller node size for the entire graph
+V(graph)$size <- 7  # Default node size
+
+# Create a new graph containing only the nodes and edges in the shortest path
+subgraph <- graph_from_data_frame(data2[edge_ids_shortest_path, ], directed = FALSE)
+
+# Set colors and sizes for the subgraph
+E(subgraph)$color <- "red"  # Color for shortest path edges
+V(subgraph)$size <- 10  # Size for nodes in the shortest path
+
+# Plot the entire graph with highlighted shortest path
+plot(graph, edge.label = E(graph)$distance, edge.label.color = ifelse(E(graph)$color == "red", "red", "gray"), 
+     main = "Βέλτιστο μονοπάτι με βάρος την τιμή των ακμών")
+
+
+```
+
+## Σχολιασμός τρίτου ερωτήματος (3α)
+Στην πρώτη περίπτωση υπολογίστηκε το βέλτιστο μονοπάτι σύμφωνα με το μικρότερο κόστος των αποστάσεων. Στο διάγραμμα παραπάνω, συμβολίζεται με κόκκινο χρώμα το βέλτιστο μονοπάτι κάθως και οι τιμές των ακμών του. Το υπόλοιπο μονοπάτι συμβολίζεται με γκρι χρώμα.
+
+Χρησιμοποιήθηκε η βιβλιοθήκη igraph και η εντολή shortest_paths για την υλοποίηση του μονοπατιού.
+
+ Η διαδρομή που θα ακολουθηθεί είναι :
+ **Ελλαδα - Τουρκία - Ουκρανία - Πολωνία - Λιθουανία - Λετονία - Έσθονία - Φινλανδία**
+ 
+ <br>
+ <br>
+ 
+# Ερώτημα 3.β
+
+<br>
+
+Δεύτερη περίπτωση (λιγότεροι κόμβοι):
+<br>
+
+```{r, fig.width = 12, fig.height = 12}
+
+# Create a graph object from the data
+graph <- graph_from_data_frame(data, directed = FALSE)
+
+# Find the shortest path between Greece and Finland considering weights
+shortest_path <- shortest_paths(graph, from = "Greece", to = "Finland",output = "both")
+
+# Extract edge IDs of the shortest path
+edge_ids_shortest_path <- as.numeric(unlist(shortest_path$epath))
+
+# Set colors for the entire graph
+E(graph)$color <- "lightblue"  # Default color
+
+# Set a different color for edges in the shortest path
+E(graph)$color[edge_ids_shortest_path] <- "red"  # Color for shortest path edges
+
+# Set smaller node size for the entire graph
+V(graph)$size <- 7  # Default node size
+
+# Create a new graph containing only the nodes and edges in the shortest path
+subgraph <- graph_from_data_frame(data2[edge_ids_shortest_path, ], directed = FALSE)
+
+# Set colors and sizes for the subgraph
+E(subgraph)$color <- "red"  # Color for shortest path edges
+V(subgraph)$size <- 10  # Size for nodes in the shortest path
+
+# Plot the entire graph with highlighted shortest path
+plot(graph, edge.label = E(graph)$distance, edge.label.color = ifelse(E(graph)$color == "red", "red", "gray"), 
+     main = "Βέλτιστο μονοπάτι με το μικρότερο πλήθος χωρών")
+
+
+```
+
+
+## Σχολιασμός τρίτου ερωτήματος (3b)
+Στην δεύτερη περίπτωση υπολογίστηκε το βέλτιστο μονοπάτι σύμφωνα με το μικρότερο πλήθος χωρών που περνάει ο ταξιδιώτης.  Στο διάγραμμα παραπάνω, συμβολίζεται με κόκκινο χρώμα το βέλτιστο μονοπάτι κάθως και οι τιμές των ακμών του. Το υπόλοιπο μονοπάτι συμβολίζεται με γκρι χρώμα.
+
+ Η διαδρομή που θα ακολουθηθεί είναι :
+ **Ελλαδα - Τουρκία - Ουκρανία - Ρωσία - Έσθονία - Φινλανδία**
+ 
+ 
+<br>
+<br>
+<br>
+<br>
+
+# Ερώτημα 4
+<br>
+
+Για το τέταρτο ερώτημα χρειάστηκε να υπολογιστεί το minimum spanning tree του δικτύου.
+<br>
+
+
+```{r, fig.width = 12, fig.height = 12}
+
+
+# Create the graph from the data frame
+g <- graph_from_data_frame(data, directed = FALSE)
+
+# Ensure the weight attribute is properly named for the mst function
+E(g)$weight <- E(g)$distance
+
+# Calculate the minimum spanning tree
+mst_g <- mst(g, weights = E(g)$weight)
+
+# Plot the minimum spanning tree with a title and smaller nodes
+plot(mst_g, main = "The Minimum Spanning Tree of the Graph", vertex.size = 6)
+```
+
+## Σχολιασμός τέταρτου ερωτήματος
+
+
+Ο αλγόριθμος του Prim είναι μια δημοφιλής μέθοδος για τον υπολογισμό του ελάχιστου συνδετικού δέντρου (minimum spanning tree - MST) σε έναν συνδεδεμένο, μη κατευθυνόμενο γράφο με βάρη στις ακμές. Είναι ένας «πλεονάζων» αλγόριθμος, που σημαίνει ότι ξεκινάει με έναν κόμβο και συνεχώς προσθέτει την ελάχιστη ακμή που ενώνει έναν κόμβο εκτός του δέντρου με έναν κόμβο που βρίσκεται ήδη στο δέντρο. Η διαδικασία επαναλαμβάνεται μέχρι όλοι οι κόμβοι του γράφου να έχουν συμπεριληφθεί στο δέντρο.
+
+
+Δημιουργήθηκε με την εντολή mst με βάρος την απόσταση των ακμών.
+
+
+# Ερώτημα 5
+<br>
+
+Για το πέμπτο ερώτημα χρειάστηκε να χρησιμοποιηθεί μια εντολή morphing. Συγκεκριμένα,υπολογίστηκε η τοπική γειτνίαση ενός κόμβου.
+<br>
+
+
+
+
+```{r}
+
+
+graph_routes <- graph_routes %>%
+  activate(nodes) %>%
+  mutate(
+    title = str_to_title(name),
+    label = str_replace_all(title, " ", "\n")
+  )
+
+
+
+
+neighbours <- graph_routes |> 
+  morph(to_local_neighborhood, node = 15, order = 1, mode = "all") |>
+  mutate(selected_node = TRUE) |> 
+  activate(edges) |> 
+  mutate(selected_edge = TRUE) |> 
+  unmorph() |> 
+  activate(nodes) |> 
+  mutate(selected_node = ifelse(is.na(selected_node), 1, 2)) |> 
+  activate(edges) |> 
+  mutate(selected_edge = ifelse(is.na(selected_edge), 1, 2)) |> 
+  arrange(selected_edge)
+
+
+neighbours |> 
+  ggraph(layout = "kk") +
+  geom_edge_diagonal(aes(alpha = selected_edge), edge_width = 3, color = "coral") +
+  geom_node_text(aes(label = label, color =name, alpha = selected_node ), size = 4) +
+  theme(legend.position = "none")
+
+```
+
+## Σχολιασμός πέμπτου ερωτήματος
+
+
+Στο παραπάνω διάγραμμα επιλέχθηκε ο κόμβος 15 ο οποίος έιναι καταχωρημένος στην μεταβλητή graph_routes και αντιστοιχεί στην Ελλάδα. Σκοπός ήταν να οπτικοποιηθούν η χώρα μας καθώς και  οι γείτονες της, οι οποίοι βρίσκονται ένα διάνυσμα μακριά της.
+
+
+Έτσι, διακρίνεται πως οι γείτονες που απέχουν ένα βήμα απο τον επιλεγμένο κόμβο είναι οι : **η Βουλγαρία , η Τουρκία και τα Σκόπια**.
+
+
+<br>
+<br>
+
+                                                 Θεσσαλονίκη 09-12-2023
+                                                                                                  
+                                             Γεώργιος Δημήτριος Γκολογκίνας
+                                             
+                                        Υπεύθυνος καθηγητής : κ.Γεώργιος Ευαγγελίδης
+
+                                                                                          
+
+
+
