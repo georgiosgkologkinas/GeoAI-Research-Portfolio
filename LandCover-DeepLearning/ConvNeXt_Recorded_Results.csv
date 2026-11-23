@@ -1,0 +1,2 @@
+architecture,outer_folds,mean_test_accuracy,mean_test_balanced_accuracy,mean_test_macro_f1,mean_test_weighted_f1,mean_test_kappa,provenance
+ConvNeXt,4,0.800851,0.81589,0.787552,0.800813,0.708303,Transcribed from uploaded model_new (1).ipynb outputs; not independently rerun
