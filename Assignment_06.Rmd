@@ -1,0 +1,342 @@
+---
+title: "Εργασια 6η"
+
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    theme: united
+    highlight: textmate
+    css: styles.css
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+      hide_on_mobile: true
+  pdf_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+    latex_engine: xelatex
+    keep_tex: true
+    fig_crop: true
+  word_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true 
+    reference_docx: template.docx
+date: "20-01-2024"
+output_options: 
+  html_document:
+    toc_float:
+      collapsed: false
+      smooth_scroll: false
+      hide_on_mobile: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.width = 10, fig.height = 5, warning = FALSE)
+
+library(sf)
+library(leaflet)
+library(ggplot2)
+library(plotly)
+library(shinydashboard)
+library(dplyr)
+
+
+data <- read.csv("C:/Users/30694/Desktop/Διερευνητική Ανάλυση και Οπτικοποίηση Δεδομένων/ergasia_6h/book2.csv")
+
+library(knitr)
+
+student_info <- data.frame(
+  "Φοιτητής" = "Γεώργιος Δημήτριος Γκολογκίνας",
+  "Υπεύθυνος_καθηγητής" = "κ. Γεώργιος Ευαγγελίδης",
+  "ΑΕΜ" = "aid24004",
+  "email" = "aid24004@uom.edu.gr"
+)
+```
+<br>
+<br>
+
+
+
+```{r, echo = FALSE}
+
+
+kable(student_info, format = "html", table.attr = 'class="table table-striped table-hover"')
+
+
+
+```
+
+
+
+
+<br>
+<br>
+<br>
+
+
+# 1. Ποσοστά των artist ανά genre
+
+<br>
+
+
+<br>
+```{r}
+
+# Calculate the percentage of artists per genre in 'g1'
+data_g1 <- table(data$g1) / nrow(data) * 100
+data_g1 <- as.data.frame(data_g1)
+names(data_g1) <- c('Genre', 'Percentage')
+
+# Order the data by Percentage in descending order
+data_g1 <- data_g1[order(-data_g1$Percentage),]
+
+# Plot the data
+p = ggplot(data_g1, aes(x=reorder(Genre, -Percentage), y=Percentage, fill=Genre)) +
+  geom_bar(stat='identity') +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title='Percentage of Artists per Genre (g1) Ordered by Percentage', x='Genre', y='Percentage')
+
+ggplotly(p)
+
+
+
+
+
+
+```
+<br>
+
+## Σχολιασμός πρώτου ερωτήματος
+
+Στο παραπάνω διάγραμμα φαίνεται πως το μεγαλύτερο ποσοστό το έχει η Pop Rock , ενω ακολουθούν οι Blues και jazz.
+Αμελητέες θεωρούνται οι Comedy spoken και children's.
+
+<br>
+<br>
+<br>
+
+
+# 1β. Counting των artist ανά genre (οσες φορές ανήκει)
+
+<br>
+
+
+<br>
+```{r}
+library(dplyr)
+library(tidyr)
+# Counting the number of artists per genre, excluding "Class"
+genre_counts <- data %>% 
+  select(g1:g8) %>% 
+  gather(key = "genre_key", value = "genre") %>% 
+  filter(!is.na(genre), genre != "") %>% 
+  group_by(genre) %>% 
+  summarise(Number_of_Artists = n()) %>% 
+  arrange(desc(Number_of_Artists))
+
+# Create a bar plot
+k = ggplot(genre_counts, aes(x = reorder(genre, Number_of_Artists), y = Number_of_Artists)) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  labs(title = "Number of Artists per Genre (excluding 'Class')",
+       x = "Genre",
+       y = "Number of Artists") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+ggplotly(k)
+
+
+```
+<br>
+
+## Σχολιασμός 1.b ερωτήματος
+
+Στο παραπάνω διάγραμμα φαίνεται πως το μεγαλύτερο counting το έχει η Pop Rock , ενω ακολουθούν οι Blues και jazz.
+
+
+<br>
+<br>
+<br>
+
+
+# 3. Kατανομές των album των top 5 genres στο χρόνο
+
+<br>
+
+
+<br>
+```{r}
+library(dplyr)
+library(tidyr)
+
+
+# Convert the 'Year' column to numeric to ensure it's treated as a number
+data$year <- as.numeric(data$year)
+
+# Create a data frame with the album distribution
+album_distribution <- as.data.frame(table(data$year))
+
+# Rename the columns for clarity
+colnames(album_distribution) <- c("Year", "Count")
+
+# Create the bar plot with vertical x-axis labels
+j = ggplot(album_distribution, aes(x = Year, y = Count)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Album Distribution Per Year",
+       x = "Year",
+       y = "Number of Albums") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+ggplotly(j)
+
+
+```
+<br>
+
+## Σχολιασμός τρίτου ερωτήματος
+
+Στο παραπάνω διάγραμμα φαίνεται πως οι δυο πιο παραγωγικές χρονιές ήταν το 2012 και το 2013. Αντίθετα τρομερά χαμηλη τιμή παρατηρείται την χρόνια 2020. Αυτο μπορεί να συνέβη λόγω της πανδημίας όπου άλλαξε η καθημερίνοτητα των ανθρώπων σχεδόν σε ολόκληρο τον πλανήτη.
+
+
+
+<br>
+<br>
+<br>
+
+
+# 4. Correlation
+
+<br>
+
+
+<br>
+```{r, echo=FALSE, fig.width=20,fig.height=13}
+
+
+
+library(vcd)
+
+data$g2[data$g2 == ""] <- data$g1[data$g2 == ""]
+
+# Set graphical parameters to rotate labels
+par(las = 2)
+
+# Create a mosaic plot
+mosaicplot(table(data$g1, data$g2), main = "Correlation Mosaic Plot")
+
+# Reset graphical parameters to default
+par(las = 0)
+
+```
+<br>
+
+## Σχολιασμός τέταρτου ερωτήματος
+
+- Τα είδη (genres) που έχουν μεγάλα ορθογώνια σε κοινές στήλες ή σειρές μπορεί να έχουν παρόμοια χαρακτηριστικά ή να συσχετίζονται μεταξύ τους.
+- Εάν ένα είδος (genre) έχει μεγάλο ορθογώνιο (box) στις περισσότερες στήλες, υποδηλώνει ότι αυτό το είδος έχει ισχυρούς συσχετισμούς με πολλά άλλα είδη ή χαρακτηριστικά.
+- Αντίθετα, εάν ένα είδος έχει πολύ λίγα ή μικρά ορθογώνια, μπορεί να σημαίνει ότι αυτό το είδος είναι αρκετά διαφορετικό από άλλα ή δεν έχει κοινά χαρακτηριστικά.
+- Παράδειγμα αποτελεί το μεγάλο κουτί (box) για τη μεταβλητή - είδος blues. Αυτο συμβαίνει δίοτι τα δύο πεδία (genre 1 and genre 2 ) έχουν την ίδια τιμή, η οποία ορίστηκε σύμφωνα με την εκφώνηση, για τα αλμπουμ που κατατάσσονται σε ένα μόνο είδος.
+
+<br>
+<br>
+<br>
+
+
+# 5. choropleth map
+
+<br>
+
+
+<br>
+```{r, echo=FALSE, fig.width=20,fig.height=13}
+
+
+
+library(spData)
+library(dplyr)
+library(tidyr)
+library(sf)
+
+
+data("world")
+world <- as(world, "sf")
+
+
+
+
+check_inclusion <- function(column1, column2) {
+  result <- sapply(column1, function(value1) {
+    counts <- sapply(column2, function(value2) {
+      length(grep(tolower(value1), tolower(value2)))
+    })
+    sum(counts)
+  })
+  return(result)
+}
+
+
+one=c(world$name_long)
+two=c(data$album)
+
+
+# Call the function
+inclusion_result <- check_inclusion(one, two)
+
+
+
+new=as.data.frame(inclusion_result)
+
+
+
+
+
+##  write.csv(new, "C:/Users/30694/Desktop/Διερευνητική Ανάλυση και Οπτικοποίηση Δεδομένων/ergasia_6h/output.csv", row.names = TRUE)
+
+
+df3 <- read.csv("C:/Users/30694/Desktop/Διερευνητική Ανάλυση και Οπτικοποίηση Δεδομένων/ergasia_6h/output.csv")
+
+
+
+merged_data <- left_join(world, df3, by = c("name_long" = "name_long"))
+
+
+# Create a choropleth map
+ggplot() +
+  geom_sf(data = merged_data, aes(fill = count)) +
+  scale_fill_gradient(name = "Count", low = "lightblue", high = "darkblue") +
+  labs(title = "Choropleth Map by Count") +
+  theme_minimal()
+
+
+
+
+
+
+```
+<br>
+
+## Σχολιασμός πέμπτου ερωτήματος
+
+- Στην παραπάνω απεικόνιση υπάρχει ενας χωροπληθής χάρτης με τις χώρες του πλανήτη.Η Ομάν εμφανίζεται 20 φορές, αλλά όχι απαραίτητα με την ακριβή μορφή του ονόματός της, αλλά μέσα σε λέξεις που περιέχουν το συνθετικό "oman". Για παραδειγμα στο αλμπουμ "When a Woman Gets the Blues" , η λέξη oman εμπεριέχεται στη λέξη woman που είναι μέρος του τίτλου του αλμπουμ.
+
+- Ακολουθεί η Ινδία η οποία στις 2 περιπτώσεις εμφανίζεται ως India ενω στις άλλες δύο εμπεριέχεται μέσα σε λέξεις.
+
+- Απο 2 εμφανίσεις έχουν οι χώρες όπως το Μεξικό,Κουβα , Τουρκία , Ισπανία , Κίνα και άλλες
+
+
+
+
+
+<br>
+<br>
+
+                                                 Θεσσαλονίκη 20-01-2024
+                                                                                                  
+                                             Γεώργιος Δημήτριος Γκολογκίνας
+                                             
+                                        Υπεύθυνος καθηγητής : κ.Γεώργιος Ευαγγελίδης
+
